@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Bean & Brew - Customer Wall</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- For patch - DOMPurify -->
+    <script src="https://unpkg.com/dompurify@3.0.9/dist/purify.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #fff;
+            color: #111;
+        }
+
+        header {
+            width: 100vw;
+            height: 64px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            padding: 0 32px;
+            justify-content: space-between;
+        }
+
+        .hero {
+            width: 100vw;
+            background: #faf8f5;
+            border-bottom: 1px solid #f0ece6;
+            padding: 48px 32px;
+            display: flex;
+            gap: 48px;
+        }
+
+        .left {
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .right {
+            width: 520px;
+            background: white;
+            border: 1px solid #ebe6dd;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 8px 40px -16px rgba(0, 0, 0, .12);
+        }
+
+        .wall {
+            width: 100vw;
+            padding: 32px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .note {
+            background: #fdfcfa;
+            border: 1px solid #f0ece6;
+            border-radius: 20px;
+            padding: 20px;
+            min-height: 140px;
+        }
+
+        textarea {
+            width: 100%;
+            background: #faf8f5;
+            border: 1px solid #e9e4dc;
+            border-radius: 16px;
+            padding: 12px 16px;
+            font-size: 15px;
+            outline: none;
+            resize: none;
+        }
+
+        textarea:focus {
+            background: #fff;
+            border-color: #111;
+        }
+
+        button {
+            height: 44px;
+            padding: 0 24px;
+            border-radius: 99px;
+            background: #111;
+            color: white;
+            border: 0;
+            font-weight: 500;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+
+        const defaultNotes = [
+            { id: 1, html: "Best flat white in town!", author: "Maya" },
+            { id: 2, html: "Love the corner table.", author: "James" },
+            { id: 3, html: "Cinnamon bun is unreal.", author: "Sofia" },
+        ];
+
+        // REAL-WORLD VULNERABLE CODE - looks like a normal formatting feature
+        function NoteCard({ html, author }) {
+          const contentRef = React.useRef(null);
+
+        //   vulnerable code: directly setting innerHTML with user input
+          React.useEffect(() => {
+            // Developer wanted to allow line breaks and bold formatting
+            // Mistake: directly setting innerHTML with user input
+            if (contentRef.current) {
+              contentRef.current.innerHTML = html
+               .replace(/\n/g, '<br/>')
+               .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            }
+          }, [html]);
+
+        
+        // Patch: sanitize user input before setting innerHTML
+        // React.useEffect(() => {
+        //     if (contentRef.current) {
+        //         // Patch: sanitize removes onerror, onload, javascript: etc.
+        //         let clean = DOMPurify.sanitize(html);
+        //         contentRef.current.innerText = clean;
+        //     }
+        // }, [html]);
+
+          return (
+            <div className="note">
+              <div ref={contentRef}></div>
+              <div style={{marginTop: 12, fontSize: 13, color: '#666'}}>— {author}</div>
+            </div>
+          );
+        }
+
+        function App() {
+            const [notes, setNotes] = React.useState(defaultNotes);
+            const [input, setInput] = React.useState("");
+
+            const post = () => {
+                if (!input.trim()) return;
+                setNotes([{ id: Date.now(), html: input, author: "Guest" }, ...notes]);
+                setInput("");
+            };
+
+            return (
+                <>
+                    <header>
+                        <b>Bean & Brew — Customer Wall</b>
+                        <span style={{ fontSize: 12, color: '#888' }}>112 Pike St · Demo vulnerable site</span>
+                    </header>
+
+                    <div className="hero">
+                        <div className="left">
+                            <h1 style={{ fontSize: 48, lineHeight: 0.9, fontFamily: 'Georgia' }}>Customer<br /><i>Wall</i></h1>
+                            <p style={{ marginTop: 16, color: '#666', lineHeight: 1.6 }}>
+                                Take a look at what our customers are saying about us! Leave your own note below. We love hearing from you!
+                            </p>
+                        </div>
+
+                        <div className="right">
+                            <h3 style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>Leave a note</h3>
+                            <textarea rows="3" value={input} onChange={e => setInput(e.target.value)} placeholder="Leave a honest review..." />
+                            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={post}>Submit</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="wall">
+                        {notes.map(n => <NoteCard key={n.id} html={n.html} author={n.author} />)}
+                    </div>
+                </>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
